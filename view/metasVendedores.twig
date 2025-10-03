@@ -62,9 +62,9 @@
                             <table class="table table-bordered table-hover" id="tabela-metas">
                                 <thead>
                                     <tr>
-                                        <th>Vendedor</th>
-                                        <th>Meta</th>
-                                        <th>Data Fechamento</th>
+                                        <th style="width: 33%;">Vendedor</th>
+                                        <th style="width: 33%;">Meta</th>
+                                        <th style="width: 33%;">Data Fechamento</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -115,14 +115,12 @@
             let linha = $('#tabela-metas tbody tr[data-id="'+id+'"]');
 
             if(linha.length > 0){
-                // preencher form com dados existentes
                 $('#input-valor-metas').val(linha.data('meta'));
                 $('#input-data-fechamento').val(linha.data('data'));
 
                 $('#button-cadastrar').text('Atualizar');
                 modoEdicao = true;
             } else {
-                // resetar form
                 $('#input-valor-metas').val('');
                 $('#input-data-fechamento').val('');
 
@@ -150,12 +148,9 @@
 
             if (valor_da_meta_numerico > limite_maximo) {
                 showAlert('#alertas','danger','O valor da meta não pode exceder R$ 1.000.000,00');
-                return; // Impede a continuação do AJAX
+                return;
             }
             // --- FIM DA VERIFICAÇÃO DE LIMITE ---
-
-            // Converte o valor para o formato que deve ser enviado para o backend
-            // removendo a formatação brasileira (vírgula e ponto)
             let valor_da_meta = valor_da_meta_numerico.toFixed(2);
 
 
@@ -166,22 +161,18 @@
             $.ajax({
                 url: rota,
                 type: 'post',
-                data: { user_id, valor_da_meta, data_fechamento }, // Envia o valor sem formatação
+                data: { user_id, valor_da_meta, data_fechamento }, 
                 dataType: 'json',
                 success: function(json) {
-                    // Recarrega apenas a tabela de metas
                     $.getJSON('index.php?route=gerencial/metasVendedores/carregarTabela&user_token={{ user_token }}', function(res) {
                         $('#tabela-metas tbody').html(res.html);
                     });
 
-                    // Reseta formulário
                     $('#form-rast')[0].reset();
 
-                    // Volta o botão para "Cadastrar" e reseta modoEdicao
                     $('#button-cadastrar').text('Cadastrar');
                     modoEdicao = false;
 
-                    // Define mensagem conforme cadastro ou atualização
                     let mensagem = modoEdicao 
                         ? 'Meta atualizada com sucesso!' 
                         : 'Meta cadastrada com sucesso!';
@@ -211,7 +202,7 @@
                 locale: 'pt-br',
                 showClose: true
             }).on('dp.change', function(e){
-                $(this).data("DateTimePicker").hide(); 
+                $(this).data("DateTimePicker").hide();
             });
         }
 
@@ -243,7 +234,6 @@
             $(this).val(valorFormatado);
         });
         
-        // Mantém a restrição de caracteres para o campo de data
         $('#input-data-fechamento').on('keypress', function(e) {
             const charCode = e.which || e.keyCode;
             if (
@@ -278,7 +268,7 @@
         `).show();
     }
 
-    // Garantir carregamento dos ícones bootstrap
+    // pra ter ctz que todos icones do boostrap vão, inclusive os bi bi-.....
     if (!document.querySelector('link[href*="bootstrap-icons"]')) {
         var l = document.createElement('link');
         l.rel = 'stylesheet';
