@@ -1,0 +1,289 @@
+{{ header }}{{ column_left }}
+<div id="content">
+	<div class="page-header">
+		<div class="container-fluid">
+			<div class="pull-right"></div>
+			<h1>{{ heading_title }}</h1>
+		</div>
+	</div>
+
+	<div class="container-fluid">
+    	<div id="alertas"></div>
+		<div class="row">
+			<!-- Painel cadastro - Coluna direita -->
+			<div id="cadastro-metas" class="col-md-3 col-md-push-9 col-sm-12">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h3 class="panel-title"><i class="bi bi-people-fill"></i> Cadastro de metas</h3>
+					</div>
+					<div class="panel-body">
+						<form id="form-rast">
+							<div class="form-group">
+								<label for="input-vendedor" class="control-label">Vendedor</label>
+								<select name="vendedor" id="input-vendedor" class="form-control" required>
+									<option value="" disabled selected>Vendedores</option>
+									{% for vendedor in vendedores %}
+										<option value="{{ vendedor.user_id }}">{{ vendedor.nomeCompleto }}</option>
+									{% endfor %}
+								</select>
+							</div>
+
+							<div class="form-group">
+								<label for="input-valor-metas" class="control-label">Valor da meta</label>
+                                <input type="text" id="input-valor-metas" name="valor_meta" value="{{ valor_meta }}" placeholder="Valor Meta" class="form-control" />
+							</div>
+
+							<div class="form-group">
+								<label for="input-date-fechamento" class="control-label">Data fechamento</label>
+								<div class="input-group date">
+									<input type="text" id="input-data-fechamento" name="data_fechamento" value="{{ data_fechamento }}" placeholder="DD-MM-YYYY" class="form-control" />
+									<span class="input-group-btn">
+										<button type="button" class="btn btn-default" onclick="$('#input-data-fechamento').focus();"><i class="fa fa-calendar"></i></button>
+									</span>
+								</div>
+							</div>
+
+							<div class="form-group text-right">
+								<button type="button" id="button-cadastrar" class="btn btn-primary">
+									Cadastrar
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+            <div class="col-md-9 col-md-pull-3 col-sm-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title"><i class="bi bi-people-fill"></i> Metas</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" id="tabela-metas">
+                                <thead>
+                                    <tr>
+                                        <th>Vendedor</th>
+                                        <th>Meta</th>
+                                        <th>Data Fechamento</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if metas %}
+                                        {% for meta in metas %}
+                                            <tr data-id="{{ meta.user_id }}" data-meta="{{ meta.valor_da_meta }}" data-data="{{ meta.data_fechamento }}">
+                                                <td>{{ meta.vendedor }}</td>
+                                                <td>{{ meta.valor_da_meta }}</td>
+                                                <td>{{ meta.data_fechamento }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="4" class="text-center">Sem resultados.</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+#alertas-model .alert {
+	margin-bottom: 0 !important;
+}
+.picker-switch.accordion-toggle {
+    display: none !important;
+}
+#cadastro-metas .picker-switch.accordion-toggle {
+    display: none !important;
+}
+
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/5.0.8/jquery.inputmask.min.js"></script>
+<script>
+    $(document).ready(function () {
+
+        let modoEdicao = false;
+
+        // --- detectar seleção de vendedor ---
+        $('#input-vendedor').on('change', function(){
+            let id = $(this).val();
+            let linha = $('#tabela-metas tbody tr[data-id="'+id+'"]');
+
+            if(linha.length > 0){
+                // preencher form com dados existentes
+                $('#input-valor-metas').val(linha.data('meta'));
+                $('#input-data-fechamento').val(linha.data('data'));
+
+                $('#button-cadastrar').text('Atualizar');
+                modoEdicao = true;
+            } else {
+                // resetar form
+                $('#input-valor-metas').val('');
+                $('#input-data-fechamento').val('');
+
+                $('#button-cadastrar').text('Cadastrar');
+                modoEdicao = false;
+            }
+        });
+
+        // --- botão cadastrar/atualizar ---
+        $('#button-cadastrar').on('click', function() {
+            let user_id = $('#input-vendedor').val();
+            let valor_da_meta_formatado = $('#input-valor-metas').val();
+            let data_fechamento = $('#input-data-fechamento').val();
+            
+            // Converte o valor formatado para um número para a verificação
+            let valor_da_meta_numerico = parseFloat(valor_da_meta_formatado.replace(/\./g, '').replace(',', '.'));
+            
+            // --- VERIFICAÇÃO DE LIMITE AQUI ---
+            const limite_maximo = 1000000.00; 
+
+            if (!user_id || !valor_da_meta_formatado || !data_fechamento) {
+                showAlert('#alertas','danger','Insira todos os campos');
+                return;
+            }
+
+            if (valor_da_meta_numerico > limite_maximo) {
+                showAlert('#alertas','danger','O valor da meta não pode exceder R$ 1.000.000,00');
+                return; // Impede a continuação do AJAX
+            }
+            // --- FIM DA VERIFICAÇÃO DE LIMITE ---
+
+            // Converte o valor para o formato que deve ser enviado para o backend
+            // removendo a formatação brasileira (vírgula e ponto)
+            let valor_da_meta = valor_da_meta_numerico.toFixed(2);
+
+
+            let rota = modoEdicao 
+                ? 'index.php?route=gerencial/metasVendedores/atualizarMeta&user_token={{ user_token }}'
+                : 'index.php?route=gerencial/metasVendedores/cadastrarMeta&user_token={{ user_token }}';
+
+            $.ajax({
+                url: rota,
+                type: 'post',
+                data: { user_id, valor_da_meta, data_fechamento }, // Envia o valor sem formatação
+                dataType: 'json',
+                success: function(json) {
+                    // Recarrega apenas a tabela de metas
+                    $.getJSON('index.php?route=gerencial/metasVendedores/carregarTabela&user_token={{ user_token }}', function(res) {
+                        $('#tabela-metas tbody').html(res.html);
+                    });
+
+                    // Reseta formulário
+                    $('#form-rast')[0].reset();
+
+                    // Volta o botão para "Cadastrar" e reseta modoEdicao
+                    $('#button-cadastrar').text('Cadastrar');
+                    modoEdicao = false;
+
+                    // Define mensagem conforme cadastro ou atualização
+                    let mensagem = modoEdicao 
+                        ? 'Meta atualizada com sucesso!' 
+                        : 'Meta cadastrada com sucesso!';
+
+                    showAlert('#alertas','success', mensagem);
+                },
+
+                error: function(xhr, ajaxOptions, thrownError) {
+                    showAlert('#alertas','danger','Ocorreu um erro, tente novamente');
+                    console.error(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+                }
+            });
+        });
+
+
+
+
+        function initDateField(selector) {
+            $(selector).inputmask('datetime', {
+                inputFormat: 'dd-mm-yyyy',
+                placeholder: 'DD-MM-YYYY',
+                showMaskOnHover: false,
+                showMaskOnFocus: true
+            });
+            $(selector).closest('.date').datetimepicker({
+                format: 'DD-MM-YYYY',
+                locale: 'pt-br',
+                showClose: true
+            }).on('dp.change', function(e){
+                $(this).data("DateTimePicker").hide(); 
+            });
+        }
+
+        initDateField('#input-data-fechamento');
+
+        function formatarValorBR(valor) {
+            if (!valor) return '';
+
+            // Remove tudo que não for dígito
+            valor = valor.replace(/\D/g, '');
+
+            if (valor === '') return '';
+
+            // Sempre considerar os dois últimos dígitos como centavos
+            let inteiro = valor.slice(0, -2) || '0';
+            let centavos = valor.slice(-2);
+
+            let numero = parseInt(inteiro, 10) + parseInt(centavos, 10)/100;
+
+            // Limite de 1.000.000,00
+            if (numero > 1000000) numero = 1000000;
+
+            return numero.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+
+        $('#input-valor-metas').on('input', function() {
+            let valorFormatado = formatarValorBR($(this).val());
+            $(this).val(valorFormatado);
+        });
+        
+        // Mantém a restrição de caracteres para o campo de data
+        $('#input-data-fechamento').on('keypress', function(e) {
+            const charCode = e.which || e.keyCode;
+            if (
+                (charCode >= 48 && charCode <= 57) ||
+                charCode === 8 || charCode === 9 || charCode === 46 ||
+                (charCode >= 37 && charCode <= 40)
+            ) {
+                return true;
+            }
+            e.preventDefault();
+        }).on('paste', function(e) {
+            e.preventDefault();
+        });
+
+    });
+
+
+    function showAlert(target, type, message) {
+        const icons = {
+            success: 'fa-check-circle',
+            danger: 'fa-exclamation-circle',
+            info: 'fa-info-circle',
+            warning: 'fa-exclamation-triangle'
+        };
+        $(target).html(`
+            <div class="alert alert-${type} alert-dismissible" role="alert">
+                <i class="fa ${icons[type] || icons.info}"></i> ${message}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Fechar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        `).show();
+    }
+
+    // Garantir carregamento dos ícones bootstrap
+    if (!document.querySelector('link[href*="bootstrap-icons"]')) {
+        var l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.href = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css';
+        document.head.appendChild(l);
+    }
+</script>
+{{ footer }}
